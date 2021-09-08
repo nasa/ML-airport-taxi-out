@@ -1,0 +1,200 @@
+# Here you can define all your data sets by using simple YAML syntax.
+#
+# Documentation for this file format can be found in "The Data Catalog"
+# Link: https://kedro.readthedocs.io/en/stable/04_user_guide/04_data_catalog.html
+
+
+MFS_data_set@DB:
+  credentials: ${globals.fuser_db_credentials}
+  load_args:
+    chunk_size_days: 30
+    params:
+      airport_icao: ${globals.airport_icao}
+      end_time: ${globals.end_time}
+      start_time: ${globals.start_time}
+  sqlfilepath: src/taxi_out/pipelines/data_query_and_save/SQL/matm_flight_summary_query.sql
+  type: data_services.kedro_extensions.io.SQLQueryFileChunkedDataSetMultiCon
+  airport:  ${globals.airport_icao}
+  
+runway_actuals_data_set@DB:
+  credentials: runways_db_credentials
+  load_args:
+    chunk_size_days: 30
+    params:
+      airport_icao: ${globals.airport_icao}
+      end_time: ${globals.end_time}
+      start_time: ${globals.start_time}
+      surf_surv_avail: ${globals.surface_surveillance_available}
+  sqlfilepath: src/taxi_out/pipelines/data_query_and_save/SQL/runway_actuals.sql
+  type: data_services.kedro_extensions.io.SQLQueryFileChunkedDataSetMultiCon
+  airport:  ${globals.airport_icao}
+
+
+
+MFS_data_set@CSV:
+  filepath: data/01_raw/${globals.airport_icao}.MFS_data_set.csv
+  load_args:
+    parse_dates:
+    - departure_stand_actual_time
+    - departure_stand_airline_time
+    - departure_runway_actual_time
+    - departure_movement_area_actual_time
+    - arrival_stand_actual_time
+    - arrival_stand_airline_time
+    - arrival_runway_actual_time
+    - arrival_movement_area_actual_time
+    low_memory: false
+    dtype:
+      departure_runway_actual: str
+      departure_stand_actual: str
+      arrival_runway_actual: str
+      arrival_stand_actual: str
+  type: pandas.CSVDataSet
+  versioned: false
+
+runway_actuals_data_set@CSV:
+  filepath: data/01_raw/${globals.airport_icao}.runway_actuals_data_set.csv
+  load_args:
+    parse_dates:
+    - departure_runway_actual_time
+    - arrival_runway_actual_time
+    dtype:
+      departure_runway_actual: str
+      arrival_runway_actual: str
+  type: pandas.CSVDataSet
+  versioned: false
+
+
+fraction_speed_gte_threshold_data_set@DB:
+  credentials: ${globals.fuser_db_credentials}
+  load_args:
+    chunk_size_days: 5
+    params:
+      airport_icao: ${globals.airport_icao}
+      end_time: ${globals.end_time}
+      start_time: ${globals.start_time}
+      threshold_knots: 4
+      surf_surv_avail: ${globals.surface_surveillance_available}
+  sqlfilepath: src/taxi_out/pipelines/data_query_and_save/SQL/fraction_speed_gte_threshold_query.sql
+  type: data_services.kedro_extensions.io.SQLQueryFileChunkedDataSetMultiCon
+  airport:  ${globals.airport_icao}
+
+
+  
+fraction_speed_gte_threshold_data_set@CSV:
+  filepath: data/01_raw/${globals.airport_icao}.fraction_speed_gte_threshold_data_set.csv
+  type: pandas.CSVDataSet
+  versioned: false
+
+
+ffs_data_set@DB:
+  credentials: ${globals.STBO_data_credentials}
+  load_args:
+    chunk_size_days: 30
+    params:
+      end_time: ${globals.end_time}
+      start_time: ${globals.start_time}
+  sqlfilepath: src/taxi_out/pipelines/data_query_and_save/SQL/ffs_asdex_query_${globals.airport_icao}.sql
+  type: data_services.kedro_extensions.io.SQLQueryFileChunkedDataSetMultiCon
+  airport:  ${globals.airport_icao}
+
+
+ffs_data_set@CSV:
+  filepath: data/01_raw/${globals.airport_icao}.ffs_data_set.csv
+  type: data_services.kedro_extensions.io.CSVDataSetEmpty
+
+  
+# Some output catalogs :
+
+_outcsv: &outcsv
+  type: pandas.CSVDataSet
+  versioned: false
+  save_args:
+    index: true
+  load_args:
+    parse_dates:
+    - departure_stand_actual_time
+    - departure_stand_airline_time
+    - departure_runway_actual_time
+    - departure_movement_area_actual_time
+    - arrival_stand_actual_time
+    - arrival_stand_airline_time
+    - arrival_runway_actual_time
+    - arrival_movement_area_actual_time
+    low_memory: false
+    dtype:
+      departure_runway_actual: str
+      departure_stand_actual: str
+      arrival_runway_actual: str
+      arrival_stand_actual: str  
+
+_model: &model
+  type: data_services.kedro_extensions.io.PickleDataSetwCloud
+  versioned: false
+  backend: cloudpickle
+
+# intermediate output 
+data_engred_unimp_ama:
+  filepath: data/02_intermediate/${globals.airport_icao}_ama_interm.csv
+  <<: *outcsv
+
+data_engred_unimp_full:
+  filepath: data/02_intermediate/${globals.airport_icao}_full_interm.csv
+  <<: *outcsv
+
+data_engred_unimp_ramp:
+  filepath: data/02_intermediate/${globals.airport_icao}_ramp_interm.csv
+  <<: *outcsv
+
+data_engred_imp_ama:
+  filepath: data/02_intermediate/${globals.airport_icao}_ama_imp_interm.csv
+  <<: *outcsv
+
+data_engred_imp_full:
+  filepath: data/02_intermediate/${globals.airport_icao}_full_imp_interm.csv
+  <<: *outcsv
+
+data_engred_imp_ramp:
+  filepath: data/02_intermediate/${globals.airport_icao}_ramp_imp_interm.csv
+  <<: *outcsv
+
+
+# predictions model and baseline
+data_predicted_full_baseline:
+  filepath: data/07_model_output/${globals.airport_icao}_full_results.csv
+  <<: *outcsv
+  
+data_predicted_ama_baseline:
+  filepath: data/07_model_output/${globals.airport_icao}_ama_results.csv
+  <<: *outcsv
+  
+data_predicted_ramp_baseline:
+  filepath: data/07_model_output/${globals.airport_icao}_ramp_results.csv
+  <<: *outcsv
+
+
+# models  
+unimp_ama_model_pipeline:
+  filepath: data//07_model_output/${globals.airport_icao}_unimpama_model.pkl
+  <<: *model
+
+unimp_full_model_pipeline:
+  filepath: data//07_model_output/${globals.airport_icao}_unimpfull_model.pkl
+  <<: *model
+
+unimp_ramp_model_pipeline:
+  filepath: data//07_model_output/${globals.airport_icao}_unimpramp_model.pkl
+  <<: *model
+
+
+imp_ama_model_pipeline:
+  filepath: data//07_model_output/${globals.airport_icao}_impama_model.pkl
+  <<: *model
+
+imp_full_model_pipeline:
+  filepath: data//07_model_output/${globals.airport_icao}_impfull_model.pkl
+  <<: *model
+
+imp_ramp_model_pipeline:
+  filepath: data//07_model_output/${globals.airport_icao}_impramp_model.pkl
+  <<: *model

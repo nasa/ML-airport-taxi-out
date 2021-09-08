@@ -1,0 +1,9 @@
+globals:
+  airport_icao: KDAL
+  surface_surveillance_available: False
+  start_time: 2020-08-01 08:00:00
+  end_time: 2020-12-31 08:00:00
+  STBO_data_credentials: stbo_db_credentials # Place-holder value - not used. 
+  fuser_db_credentials: fuser_db_credentials
+  category_exclusions: []
+

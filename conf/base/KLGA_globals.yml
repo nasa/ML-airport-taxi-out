@@ -1,0 +1,9 @@
+globals:
+  airport_icao: KLGA
+  surface_surveillance_available: True
+  start_time: 2019-06-01 08:00:00
+  end_time: 2019-12-30 08:00:00
+  STBO_data_credentials: stbo_db_credentials # Place-holder value - not used.
+  fuser_db_credentials: fuser_db_credentials
+  category_exclusions: []
+

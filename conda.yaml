@@ -1,0 +1,22 @@
+name: taxi-out-env
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.7
+  - scikit-learn=0.23.2
+  - pandas=1.1.5
+  - numpy=1.19.1
+  - cloudpickle=1.6.0
+  - mlflow=1.19
+  - xgboost=1.2.0
+  - kedro=0.16.2
+  - psycopg2=2.8.5
+  - scp=0.13.2
+  - matplotlib=3.3.2
+  - pytest-cov=2.10.1
+  - seaborn=0.11.1
+  - hyperopt=0.2.5
+  - pip
+  - pip:
+    - data_services<1.0.2,>=1.0.1dev88

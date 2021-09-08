@@ -1,0 +1,325 @@
+globals: ${globals}
+
+ntx_connection:
+  host: XXXXX
+  port: XXXXX
+  username: XXXXX
+
+
+TEST_SIZE: 0.2  # fraction for test set
+#RANDOM_SEED: 1234
+RANDOM_SEED: 'RANDOM'
+
+
+##### Data Engineering Filter Setup :
+# -1 for NIQR : disable the filter
+# Each NIQR is only applied to its own pipeline
+NIQR_RAMP_TAXI: 3.0
+NIQR_FULL_TAXI: [0,1]
+NIQR_AMA_TAXI: [0,1]
+
+# Remove None for some timestamp depending on which pipeline (full, ama or ramp)
+full_non_null: [departure_runway_actual_time, departure_movement_area_actual_time, departure_stand_actual_time]
+ramp_non_null : [departure_runway_actual_time, departure_movement_area_actual_time, departure_stand_actual_time]
+ama_non_null : [departure_runway_actual_time, departure_movement_area_actual_time, departure_stand_actual_time] 
+
+
+###### filter with aircraft surface counts :
+### Counts available : arr_runway_AMA_count, dep_AMA_runway_count
+# AMA_gate_count, dep_stand_AMA_count, total_arrivals_on_surface
+# total_departures_on_surface, total_flights_on_surface
+upperlimit_counts:
+  ramp:
+    dep_stand_AMA_count: 0.5
+    dep_AMA_runway_count: 0.6
+    arr_runway_AMA_count: 0.8
+  # full:
+  #   total_arrivals_on_surface: 0.6
+
+
+
+##### Hypertuning Setup :
+hypertune:
+  sep: ..
+  method: gridsearch
+
+
+#### Split an additional n_cv-1 time the data into train/test to calculate
+#### an uncertainty on the metrics (_STD), can be done in montecarlo
+#### or kfold fashion (kfold with shuffle)
+cross_val:
+  algo: montecarlo
+  n_cv: 10
+
+
+# ------------ Unimpeded AMA model configuration
+unimp_ama_model_params:
+  name: unimp_AMA_XGB
+#  label: ama
+  target: actual_departure_ama_taxi_time
+  unimpeded_ama_fraction_gte: 0.8
+  features: [departure_stand_actual, departure_runway_actual,carrier]
+  features_core: [ departure_runway_actual, departure_stand_actual ]
+  OneHotEncoder_features: [departure_runway_actual,carrier]
+  gate_cluster :
+    to_transform : departure_stand_actual
+    scaler : standard
+    clust : hierch
+    nrunways : 2
+    nclusters : 11
+  model: XGBRegressor
+  model_params:
+    objective: reg:squarederror
+    colsample_bytree: 0.4
+    learning_rate: 0.3
+    max_depth: 5
+    alpha: 10
+    n_estimators: 500
+    random_state: 0
+  metrics: [mean_absolute_error, rmse, MAD_residual, median_residual]
+  baseline:
+    group_by_features: [departure_runway_actual,terminal]
+    group_by_agg:
+      metric: quantile
+      param: 0.5
+  mlflow:
+    tracking_uri: XXXXX
+    experiment_name: unimpeded_ama_taxiout
+    run_name: DEFAULT
+  visual:
+    plots: [residual_histogram, estimate_vs_truth]
+    datasets: [train, test]
+    estimates: [predicted_unimp_AMA_XGB, predicted_baseline]
+  
+
+
+# ------------ Unimpeded full model configuration
+unimp_full_model_params:
+  name: unimp_taxi_GBR
+#  label: total
+  target: actual_departure_full_taxi_time
+  unimpeded_ama_fraction_gte: 0.8
+  features: [departure_stand_actual, departure_runway_actual,carrier] 
+  features_core: [departure_runway_actual, departure_stand_actual ] 
+  OneHotEncoder_features: [departure_runway_actual,carrier]
+  gate_cluster :
+    to_transform : departure_stand_actual
+    scaler : standard
+    clust : hierch
+    nrunways : 2
+    nclusters : 8
+  ## Added for modeling (ATDIOP- 1399)
+  model: XGBRegressor
+  model_params:
+    objective: reg:squarederror
+    colsample_bytree: 0.4
+    learning_rate: 0.3
+    max_depth: 5
+    alpha: 10
+    n_estimators: 500
+    random_state: 0
+  metrics: [mean_absolute_error, rmse, MAD_residual, median_residual]
+  baseline:
+    group_by_features: [departure_runway_actual,terminal]
+     ## maybe not necessary, default is mean, but can do quantile
+    group_by_agg:
+      metric: mean
+  mlflow:
+    tracking_uri: XXXXX
+    experiment_name: unimpeded_full_taxiout
+    run_name: DEFAULT
+  visual:
+    plots: [residual_histogram, estimate_vs_truth]
+    datasets: [train, test]
+    estimates: [predicted_unimp_taxi_GBR, predicted_baseline]
+
+
+
+# ------------ Unimpeded ramp model configuration
+unimp_ramp_model_params:
+  name: unimp_ramp_GBR
+#  label: ramp
+  target: actual_departure_ramp_taxi_time
+  unimpeded_ama_fraction_gte: 0.8
+  features: [departure_stand_actual, departure_runway_actual, carrier] 
+  features_core: [departure_runway_actual, departure_stand_actual ] 
+  OneHotEncoder_features: [departure_runway_actual, carrier]
+  gate_cluster :
+    to_transform : departure_stand_actual
+    scaler : standard
+    clust : hierch
+    nrunways : 2
+    nclusters :  8
+  ## Added for modeling (ATDIOP- 1399)
+  model: XGBRegressor
+  model_params:
+    objective: reg:squarederror
+    colsample_bytree: 0.2
+    learning_rate: 0.2
+    max_depth: 5
+    alpha: 10
+    n_estimators: 500
+    random_state: 0
+  # model: GradientBoostingRegressor
+  # model_params:
+  #   n_estimators: 1000
+  #   min_samples_split: 10
+  #   min_samples_leaf: 2
+  #   max_features: sqrt
+  #   random_state: 0
+  #   loss: quantile
+  #   alpha: 0.2
+  metrics: [mean_absolute_error, rmse, MAD_residual, median_residual]
+  baseline:
+    group_by_features: [departure_runway_actual,terminal]
+     ## maybe not necessary, default is mean, but can do quantile
+    group_by_agg:
+      metric: mean
+  mlflow:
+    tracking_uri: XXXXX
+    experiment_name: unimpeded_ramp_taxiout
+    run_name: DEFAULT
+  visual:
+    plots: [residual_histogram, estimate_vs_truth]
+    datasets: [train, test]
+    estimates: [predicted_unimp_ramp_GBR, predicted_baseline]
+
+
+
+
+# ------------ Impeded model configuration
+# taxi in information :
+#[carrier, aircraft_type, arrival_stand_actual, arrival_runway_actual,arr_runway_AMA_count,AMA_gate_count,dep_AMA_runway_count,dep_stand_AMA_count,gate_occupied_at_landing_proxy, total_flights_on_surface]
+# decent set-up : [departure_stand_actual, departure_runway_actual, carrier, aircraft_type, total_arrivals_on_surface, total_departures_on_surface]
+# @ DFW : arrival/departure split more important than AMA/ramp one
+
+# ------------ Impeded AMA model configuration
+imp_ama_model_params:
+  name: imp_AMA_XGB
+  target: actual_departure_ama_taxi_time
+  unimpeded_ama_fraction_gte: 0.9
+  features: [departure_stand_actual, departure_runway_actual, carrier, total_arrivals_on_surface, total_departures_on_surface, departure_stand_airline_time]
+  features_core: [ departure_runway_actual, departure_stand_actual ]
+  OneHotEncoder_features: [departure_runway_actual, carrier]
+  Binned_features: [departure_stand_airline_time]
+  gate_cluster :
+    to_transform : departure_stand_actual
+    scaler : standard
+    clust : hierch
+    nrunways : 2
+    nclusters : 7
+  model: XGBRegressor
+  model_params:
+    objective: reg:squarederror
+    colsample_bytree: 0.3
+    learning_rate: 0.1
+    max_depth: 3
+    alpha: 10
+    n_estimators: 500
+    random_state: 0
+  metrics: [mean_absolute_error, rmse, MAD_residual, median_residual]
+  baseline:
+    group_by_features: [departure_runway_actual, terminal]
+    group_by_agg:
+      metric: quantile
+      param: 0.5
+  mlflow:
+    tracking_uri: XXXXX
+    experiment_name: impeded_ama_taxiout
+    run_name: DEFAULT
+  visual:
+    plots: [residual_histogram, estimate_vs_truth]
+    datasets: [train, test]
+    estimates: [predicted_imp_AMA_XGB, predicted_baseline]
+
+
+# ------------ Impeded full model configuration
+
+imp_full_model_params:
+  name: imp_full_XGB
+  target: actual_departure_full_taxi_time
+  unimpeded_ama_fraction_gte: 0.9
+  features: [departure_stand_actual, departure_runway_actual, carrier, total_arrivals_on_surface, total_departures_on_surface, departure_stand_airline_time]
+  features_core: [ departure_runway_actual, departure_stand_actual ]
+#  features_core : [departure_stand_actual, departure_runway_actual, carrier, aircraft_type, total_arrivals_on_surface, total_departures_on_surface, departure_stand_airline_time]
+  OneHotEncoder_features: [departure_runway_actual, carrier]
+  Binned_features: [departure_stand_airline_time]
+  gate_cluster :
+    to_transform : departure_stand_actual
+    scaler : standard
+    clust : hierch
+    nrunways : 2
+    nclusters : 7
+#  model : RandomForestRegressor
+#  model_params:
+#    n_estimators: 50
+#    max_depth: 7
+#    random_state: 0
+#    criterion: mae
+#    n_jobs: -1
+  model: XGBRegressor
+  model_params:
+    objective: reg:squarederror
+    colsample_bytree: 0.3
+    learning_rate: 0.1
+    max_depth: 3
+    alpha: 10
+    n_estimators: 500
+    random_state: 0
+  metrics: [mean_absolute_error, rmse, MAD_residual, median_residual]
+  baseline:
+    group_by_features: [departure_runway_actual, terminal]
+    group_by_agg:
+      metric: quantile
+      param: 0.5
+  mlflow:
+    tracking_uri: XXXXX
+    experiment_name: impeded_full_taxiout
+    run_name: DEFAULT
+  visual:
+    plots: [residual_histogram, estimate_vs_truth]
+    datasets: [train, test]
+    estimates: [predicted_imp_full_XGB, predicted_baseline]
+
+
+# ------------ Impeded ramp model configuration
+
+  
+imp_ramp_model_params:
+  name: imp_ramp_XGB
+  target: actual_departure_ramp_taxi_time
+  unimpeded_ama_fraction_gte: 0.9
+  features: [departure_stand_actual, departure_runway_actual, carrier, total_arrivals_on_surface, total_departures_on_surface, departure_stand_airline_time]
+  features_core: [ departure_runway_actual, departure_stand_actual ]
+  OneHotEncoder_features: [departure_runway_actual, carrier]
+  Binned_features: [departure_stand_airline_time]
+  gate_cluster :
+    to_transform : departure_stand_actual
+    scaler : standard
+    clust : hierch
+    nrunways : 2
+    nclusters : 6
+  model: XGBRegressor
+  model_params:
+    objective: reg:squarederror
+    colsample_bytree: 0.3
+    learning_rate: 0.1
+    max_depth: 3
+    alpha: 10
+    n_estimators: 500
+    random_state: 0
+  metrics: [mean_absolute_error, rmse, MAD_residual, median_residual]
+  baseline:
+    group_by_features: [departure_runway_actual, terminal]
+    group_by_agg:
+      metric: quantile
+      param: 0.5
+  mlflow:
+    tracking_uri: XXXXX
+    experiment_name: impeded_ramp_taxiout
+    run_name: DEFAULT
+  visual:
+    plots: [residual_histogram, estimate_vs_truth]
+    datasets: [train, test]
+    estimates: [predicted_imp_ramp_XGB, predicted_baseline]
+  
