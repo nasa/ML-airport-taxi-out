@@ -38,7 +38,7 @@ In addition to the steps below, take a look at the [Kedro documentation](https:/
 
 ## Set up the project conda environment
 
-Create new environment from `conda.yml` file
+Create new environment from `conda.yaml` file
 ```
 conda env create -f conda.yaml
 ```
@@ -262,7 +262,7 @@ To use it, first install it in the project environment via pip.
 ```
 pip install kedro-viz
 ```
-Then, from the top-level `taxi_out/` directory, visualize a pipeline by providing its name after the `--pipeline` command line interface command.
+Then, from the top-level `ML-airport-taxi-out/` directory, visualize a pipeline by providing its name after the `--pipeline` command line interface command.
 For example, the command below will launch a browser with an interactive visualization of the unimpeded ramp training and testing pipeline.
 ```
 kedro viz --pipeline unimp_ramp_taxi
