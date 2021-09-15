@@ -1,3 +1,4 @@
+![ATD2 logo](images/ATD2_logo_animation.gif)
 ## Taxi-Out Time Duration Prediction
 
 The ML-airport-taxi-out software is developed to provide a reference implementation to serve as a research example how to train and register Machine Learning (ML) models intended for predicting impeded and unimpeded taxi out duration. The software is designed to point to databases which are not provided as part of the software release and thus this software is only intended to serve as an example of best practices. The software is built in python and leverages open-source libraries kedro, scikitlearn, MLFlow, and others. The software provides examples how to build three distinct pipelines for data query and save, data engineering, and data science for each model. These pipelines enable scalable, repeatable, and maintainable development of ML models.
@@ -17,6 +18,16 @@ The input data sources for the individual ML prediction services are shown in th
 The ML Airport Surface Model forms the building blocks of a cloud based predictive engine that alerts flight operators to pre-departure Trajectory Option Set (TOS) reroute opportunities within the terminal airspace. The ML Airport Surface Model was designed to be a scalable replacement for the capabilities provided by NASA's Surface Trajectory Based Operations (STBO) subsystem, which is a component of the fielded ATD2 Phase 3 System in the North Texas Metroplex. The STBO subsystem relies heavily upon detailed adaptation, which defines the physical constraints and encodes Subject Matter Expert knowledge within decision trees, and creates a costly bottleneck to scaling the pre-departure TOS digital reroute capability across the National Airspace System.
 
 
+Taxi-Out Prediction is part of a suite of softwares designed to model the airport surface :
+- [ML-airport Airport Configuration Model](https://github.com/nasa/ML-airport-configuration)
+- [ML-airport Arrival Runway Model](https://github.com/nasa/ML-airport-arrival-runway)
+- [ML-airport Departure Runway Model](https://github.com/nasa/ML-airport-departure-runway)
+- [ML-airport Taxi-In Model](https://github.com/nasa/ML-airport-taxi-in)
+- [ML-airport Taxi-Out Model](https://github.com/nasa/ML-airport-taxi-out)
+- [ML-airport Estimated-On-Time Model](https://github.com/nasa/ML-airport-estimated-ON)
+- [ML-airport Data Services](https://github.com/nasa/ML-airport-data-services)
+
+
 ## Taxi-out Prediction Models
 
 This project trains and evaluates models that predict taxi-out durations.
@@ -31,6 +42,7 @@ These predict :
 
 Unimpeded taxi-out time predictions are not time-varying.
 Impeded taxi-out time models are trained to make predictions prior to take-off.
+
 
 ## Steps to start using this project (and some helpful information about Kedro + MLflow projects)
 
