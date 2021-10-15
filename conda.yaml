@@ -19,4 +19,4 @@ dependencies:
   - hyperopt=0.2.5
   - pip
   - pip:
-    - data_services<1.0.2,>=1.0.1dev88
+    - git+https://github.com/nasa/ML-airport-data-services.git
