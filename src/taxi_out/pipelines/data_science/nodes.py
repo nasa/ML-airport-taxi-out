@@ -118,7 +118,6 @@ def flatten_dict(d, sep = '_') :
   return dict( (sep.join(ks), v) for ks, v in list_from_nested_dict(d))
 
 
-
 def string_to_list(in_string, sep = '..') :
     """
     Take a string and split it with the separator, returns the element
@@ -148,7 +147,8 @@ def string_to_list(in_string, sep = '..') :
     if (values[0].strip().isdigit()) :
         values_out = values_out.astype(int)
 
-    return values_out
+    # need to return list not np array, otherwise issue with KerasRegressor    
+    return values_out.tolist()
     
 
 #### USEFUL FUNCTIONs for the OPTIMIZATION NODE
@@ -177,15 +177,11 @@ def create_param_grid(
     param_grid = {}
     for variable_i in variable_params :
         if  variable_i.startswith("model_params") :
-          #!!!!!corepip
           #param_grid[variable_i.replace('model_params','model__regressor')]=variable_params[variable_i]
           param_grid[variable_i.replace('model_params','core_pipeline__model__regressor')]=variable_params[variable_i]
         if  variable_i.startswith("gate_cluster") :
-          #!!!!!corepip
           #param_grid[variable_i.replace('gate_cluster','gate_encoder')]=variable_params[variable_i]            
-          param_grid[variable_i.replace('gate_cluster','core_pipeline__gate_encoder')]=variable_params[variable_i]            
-          
-
+          param_grid[variable_i.replace('gate_cluster','core_pipeline__gate_encoder')]=variable_params[variable_i]
     return param_grid
 
 
@@ -207,24 +203,45 @@ def replace_model_params(
 
 
 
+###  Function to define a model for KerasRegressor (sklearn keras wrapper)
+###  with a wrapper to define the number of input features
+
+import keras
+from keras.models import Sequential
+from keras.layers import Dense, Dropout, Activation
+from keras.optimizers import Adam
+from keras.wrappers.scikit_learn import KerasRegressor
+
+def keras_model_definition_ndim(input_dim=50) :
+  def keras_model_definition(n_hidden = 64, n_layers = 3, activation = 'relu',
+                             drop_out = 0.5, loss = 'mean_absolute_error',
+                             learning_rate = 0.1) :
+      model = Sequential()
+      model.add(Dense(n_hidden, activation=activation, input_dim=input_dim))
+      model.add(Dropout(drop_out))
+      for k in range(n_layers-1):
+        model.add(Dense(n_hidden, activation=activation))
+        model.add(Dropout(drop_out))
+      model.add(Dense(1, activation='linear'))
+      adam = Adam(learning_rate=learning_rate)
+      model.compile(loss=loss,
+                    optimizer=adam)
+      return model
+  return keras_model_definition  
+
+
+
 ################################  UNIMPEDED /IMPEDED CORE FUNCTIONS ##########
 
 
 ### GENERIC NODE FUNCTIONS CALLED BY SPECIFIC (full, AMA, ramp) NODE FUNCTIONS
-  
+
 def _define_any_model(
     data: pd.DataFrame,
     model_params: Dict[str, Any],
     global_params: Dict[str, Any],
     random_seed: str,
 ) -> FilterPipeline:
-
-    # Define Possible models :
-    model_dict = {
-      'XGBRegressor': xgb.XGBRegressor,
-      'GradientBoostingRegressor':  GradientBoostingRegressor,
-      'RandomForestRegressor' : RandomForestRegressor,
-    }
 
 
     # Test if the model should be a constant :
@@ -332,12 +349,17 @@ def _define_any_model(
    
     if ('gate_cluster' in model_params.keys()) :
         gate_encoder = GateClusterEncoder(**model_params['gate_cluster'], active_run_id=None)
+        ninputs = gate_encoder.nclusters
     else :
         gate_encoder = ColumnTransformer(
             [('stand_encoder',StandEncoder(),['departure_stand_actual'])],
             remainder='passthrough',
             sparse_threshold=0,
         )
+        # need to try out the stand encoder to define the output size (for Keras)
+        test = StandEncoder()
+        test.fit(data.loc[train_selection & (data.group == 'train'), model_params['features']])
+        ninputs = len(test.colnames)
 
     # Binned time transform (temp):
     if ('Binned_features' in model_params) :
@@ -349,7 +371,18 @@ def _define_any_model(
       return x.apply(lambda col : pd.to_datetime(col).apply( lambda t : (t.hour*60+t.minute)//10) if col.name in Binned_features else col)
     binned_time_transf = FunctionTransformer(func_trans,validate=False)
 
-
+    # Calculated the # of features for Keras :
+    ninputs = ninputs + np.sum([len(x) for x in onehot_transformer.transformers[0][1].categories])
+    if (model_params['model'] == 'KerasNN') :
+      model_params['model_params'].update({'build_fn' : keras_model_definition_ndim(ninputs)})
+      
+    # Define Possible models :
+    model_dict = {
+      'XGBRegressor': xgb.XGBRegressor,
+      'GradientBoostingRegressor':  GradientBoostingRegressor,
+      'RandomForestRegressor' : RandomForestRegressor,
+      'KerasNN' : KerasRegressor
+    }
 
      
     if (model_params['model'] in model_dict) :
@@ -378,10 +411,6 @@ def _define_any_model(
             ('binned_time_transf',binned_time_transf),
             ('gate_encoder', gate_encoder),
             ('onehot_transformer', onehot_transformer),
-#            ('to_float',
-#             FunctionTransformer(
-#                 lambda x : x.apply(pd.to_numeric, errors='ignore')
-#                 ,validate=False)),
             ('to_array', FunctionTransformer(lambda x : x.values,
                                              validate=False)),
             ('model', model),
@@ -414,7 +443,7 @@ def _optimize_any_model(
       'hyperopt'  :  OptimizerHOP,
       }
     
-
+    
     if (len(param_grid) > 0) :
         def neg_mad(y_t,y_p):
             log = logging.getLogger(__name__)
@@ -431,7 +460,7 @@ def _optimize_any_model(
           )
         else :
           log.error("Unknown Optimization method : {}\n".format(hyper_params['method']))
-          
+
         search.fit(
             data.loc[
                 train_selection & (data.group == 'train'),
@@ -485,6 +514,7 @@ def _train_any_model(
     filt_pipeline : FilterPipeline,
     train_selection: Union[pd.Series, bool],
 ) -> List[FilterPipeline]:
+
 
     log = logging.getLogger(__name__)
     tic = time.time()    

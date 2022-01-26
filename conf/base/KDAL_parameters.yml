@@ -31,6 +31,11 @@ hypertune:
   method: hyperopt
 
 
+#### freight airlines : to give options to prevent filter on feature core for only freight airlines
+#freight_airlines: [UPS, FDX]
+freight_airlines:
+
+  
 
 # ------------ Unimpeded AMA model configuration
 # unimp_ama_model_params:

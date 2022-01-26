@@ -90,16 +90,17 @@ def create_pipeline(**kwargs):
                 inputs="data_engred_general",
                 outputs="data_engred_general_departures",
             ),
-            node(
-                func=apply_filter_req_dep_stand_and_runway,
-                inputs="data_engred_general_departures",
-                outputs="data_engred_general_departures_filtered",
-            ),
         ]
     )
 
     unimp_full_extra_nodes = Pipeline(
         [
+            node(
+            func=apply_filter_req_dep_stand_and_runway,
+                inputs=["data_engred_general_departures","params:unimp_full_model_params",
+                        "params:freight_airlines"],
+                outputs="data_engred_general_departures_filtered",
+            ),
             node(
                 func=apply_filter_req_niqr_dep_full_taxi_times,
                 inputs=[
@@ -153,6 +154,12 @@ def create_pipeline(**kwargs):
     unimp_ramp_extra_nodes = Pipeline(
         [
             node(
+            func=apply_filter_req_dep_stand_and_runway,
+                inputs=["data_engred_general_departures","params:unimp_ramp_model_params",
+                        "params:freight_airlines"],
+                outputs="data_engred_general_departures_filtered",
+            ),
+            node(
                 func=apply_filter_req_niqr_dep_ramp_taxi_times,
                 inputs=[
                     "data_engred_general_departures_filtered",
@@ -182,6 +189,12 @@ def create_pipeline(**kwargs):
 
     unimp_ama_extra_nodes = Pipeline(
         [
+            node(
+            func=apply_filter_req_dep_stand_and_runway,
+                inputs=["data_engred_general_departures","params:unimp_ama_model_params",
+                        "params:freight_airlines"],
+                outputs="data_engred_general_departures_filtered",
+            ),
             node(
                 func=apply_filter_req_niqr_dep_ama_taxi_times,
                 inputs=["data_engred_general_departures_filtered",

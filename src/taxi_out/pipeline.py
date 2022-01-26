@@ -37,6 +37,8 @@ from taxi_out.pipelines import data_query_and_save as dqs
 from taxi_out.pipelines import data_engineering as de
 from taxi_out.pipelines import data_science as ds
 
+from data_services.conda_environment_test import check_environment
+
 def create_pipelines(**kwargs) -> Dict[str, Pipeline]:
     """Create the project's pipeline.
 
@@ -48,6 +50,9 @@ def create_pipelines(**kwargs) -> Dict[str, Pipeline]:
 
     """
 
+    check_environment()
+
+    
     dqs_pipelines = dqs.create_pipeline()
     de_pipelines = de.create_pipeline()  
     ds_pipelines = ds.create_pipeline()

@@ -5,7 +5,7 @@ def shouldBuild = true
 pipeline {
    agent any
    environment {
-       PATH = "$PATH:$PIPELINE_SCRIPTS"
+       PROJECT_YML = "conda.yaml"
    }
    parameters {
       choice(

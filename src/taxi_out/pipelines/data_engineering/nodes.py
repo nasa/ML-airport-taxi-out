@@ -260,35 +260,77 @@ def apply_filter_null_times(
 
     return data
 
+
+
 def apply_filter_req_dep_stand_and_runway(
-    data: pd.DataFrame,
+    data_in: pd.DataFrame,
+    model_params: Dict[str, Any],
+    freight_airlines: list = [],
 ) -> pd.DataFrame:
+
+    data  = data_in.copy()
     initial_row_count = data.shape[0]
+    log = logging.getLogger(__name__)
 
     # Remove rows with no stand
-    data = data[
-        data.departure_stand_actual.notnull()
-    ]
+    # if stand is in the core features
+    # Temporary remove it to let Fedex, UPS go through, maybe I should only pass it if it is Fedex or UPS
+    if ("departure_stand_actual" in model_params["features_core"]) :
+        data = data[
+            data.departure_stand_actual.notnull()
+        ]
+        interim_row_count = data.shape[0]
+        log.info(('Kept {:.1f}% of departures when filtering'+
+                 'to keep only departures with non-null'+
+                 'departure stand').format(
+                     (interim_row_count/initial_row_count)*100)
+                 )
+    else :
+        if ((freight_airlines == None) or (len(freight_airlines) == 0)) :
+            log.warning('Departure Stand Not Filtered for Null value because not in core features')
+            interim_row_count = data.shape[0]
+        else :
+            # only pass the null value if on the freight airlines list
+            data = data[
+                data.departure_stand_actual.notnull() | data.carrier.isin(freight_airlines)
+                ]
+            interim_row_count = data.shape[0]
+            log.warning(('Kept {:.1f}% of departures when filtering'+
+                         'to keep only departures with non-null'+
+                         'departure stand (freight not filtered)').format(
+                             (interim_row_count/initial_row_count)*100)
+                        )
 
-    interim_row_count = data.shape[0]
 
-    log = logging.getLogger(__name__)
-    log.info('Kept {:.1f}% of departures when filtering to keep only departures with non-null departure stand'.format(
-        (interim_row_count/initial_row_count)*100
-    ))
-
-    # Remove rows with no runway
-    data = data[
-        data.departure_runway_actual.notnull()
-    ]
-
-    final_row_count = data.shape[0]
-
-    log.info('Kept {:.1f}% of departures when filtering to keep only departures with non-null departure runway'.format(
-        (final_row_count/interim_row_count)*100
-    ))
-
+    # Remove rows with no runway if they are core parameters :
+    if ("departure_runway_actual" in model_params["features_core"]) :    
+        data = data[
+            data.departure_runway_actual.notnull()
+        ]    
+        final_row_count = data.shape[0]
+        log.info(('Kept {:.1f}% of departures when filtering'+
+                 'to keep only departures with non-null'+
+                 'departure runway').format(
+                     (final_row_count/interim_row_count)*100)
+                 )
+    else :
+        if ((freight_airlines == None) or (len(freight_airlines) == 0)) :
+            log.warning('Departure Runway Not Filtered for Null value because not in core features')
+        else :
+            # only pass the null value if on the freight airlines list
+            data = data[
+                data.departure_runway_actual.notnull() | data.carrier.isin(freight_airlines)
+                ]
+            final_row_count = data.shape[0]
+            log.info(('Kept {:.1f}% of departures when filtering'+
+                      'to keep only departures with non-null'+
+                      'departure runway (freight not filtered)').format(
+                          (final_row_count/interim_row_count)*100)
+                     )
+        
     return data
+
+
 
 
 def _apply_filter_req_niqr_dep_any_taxi_times(

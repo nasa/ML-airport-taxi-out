@@ -5,6 +5,7 @@ ntx_connection:
   port: XXXXX
   username: XXXXX
 
+
 TEST_SIZE: 0.2  # fraction for test set
 #RANDOM_SEED: 1234
 RANDOM_SEED: 'RANDOM'
@@ -49,6 +50,10 @@ hypertune:
 cross_val:
   algo: montecarlo
   n_cv: 10
+
+#### freight airlines : to give options to prevent filter on feature core for only freight airlines
+#freight_airlines: [UPS, FDX]
+freight_airlines:
 
 
 # ------------ Unimpeded AMA model configuration
@@ -99,7 +104,7 @@ unimp_full_model_params:
   target: actual_departure_full_taxi_time
   unimpeded_ama_fraction_gte: 0.9
   features: [departure_stand_actual, departure_runway_actual,carrier] 
-  features_core: [departure_runway_actual, departure_stand_actual ] 
+  features_core: [departure_stand_actual, departure_runway_actual]
   OneHotEncoder_features: [departure_runway_actual,carrier]
   gate_cluster :
     to_transform : departure_stand_actual
@@ -108,6 +113,13 @@ unimp_full_model_params:
     nrunways : 3
     nclusters : 11
   ## Added for modeling (ATDIOP- 1399)
+  # model: KerasNN
+  # model_params:
+  #   drop_out: 0.1..0.5..0.1
+  #   learning_rate: 0.03
+  #   batch_size: 2000
+  #   epochs: 100
+  #   n_hidden: 64
   model: XGBRegressor
   model_params:
     objective: reg:squarederror

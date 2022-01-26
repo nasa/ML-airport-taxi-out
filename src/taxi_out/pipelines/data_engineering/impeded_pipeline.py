@@ -113,21 +113,17 @@ def create_pipeline(**kwargs):
                 func=apply_filter_null_times,
                 inputs="data_engred_general_departures",
                 outputs="data_engred_general_departures_non_null"),
-            node(
-                func=apply_filter_req_dep_stand_and_runway,
-                inputs="data_engred_general_departures_non_null",
-                outputs="data_engred_general_departures_filtered",
-            ),
         ]
     )
 
     imp_full_extra_nodes = Pipeline(
         [
-            #node(
-            #    func=apply_filter_req_dep_ama_taxi_times,
-            #    inputs="data_engred_general_departures_filtered",
-            #    outputs="data_amafiltered_imp_full",
-            #),
+            node(
+                func=apply_filter_req_dep_stand_and_runway,
+                inputs=["data_engred_general_departures_non_null","params:imp_full_model_params",
+                        "params:freight_airlines"],
+                outputs="data_engred_general_departures_filtered",
+            ),
             node(
                 func=apply_filter_req_niqr_dep_ama_taxi_times,
                 inputs=["data_engred_general_departures_filtered",
@@ -162,6 +158,12 @@ def create_pipeline(**kwargs):
     imp_ramp_extra_nodes = Pipeline(
         [
             node(
+                func=apply_filter_req_dep_stand_and_runway,
+                inputs=["data_engred_general_departures_non_null","params:imp_ramp_model_params",
+                        "params:freight_airlines"],
+                outputs="data_engred_general_departures_filtered",
+            ),
+            node(
                 func=apply_filter_req_niqr_dep_ramp_taxi_times,
                 inputs=[
                     "data_engred_general_departures_filtered",
@@ -179,12 +181,12 @@ def create_pipeline(**kwargs):
 
     imp_ama_extra_nodes = Pipeline(
         [
-            #node(
-            #    func=apply_filter_req_dep_ama_taxi_times,
-            #    inputs="data_engred_general_departures_filtered",
-            #    #outputs="data_engred_general_departures_filtered_ama",
-            #    outputs="data_engred_imp_ama",
-            #),
+            node(
+                func=apply_filter_req_dep_stand_and_runway,
+                inputs=["data_engred_general_departures_non_null","params:imp_ama_model_params",
+                        "params:freight_airlines"],
+                outputs="data_engred_general_departures_filtered",
+            ),
             node(
                 func=apply_filter_req_niqr_dep_ama_taxi_times,
                 inputs=["data_engred_general_departures_filtered",
